@@ -19,12 +19,12 @@ static uint8_t s_addr = MPU_ADDR_PRIMARY;
 static bool s_ready = false;
 static bool s_error = true;
 static uint8_t s_failCount = 0;
-static float s_accelOffsetX = 0.0f;
-static float s_accelOffsetY = 0.0f;
-static float s_accelOffsetZ = 0.0f;
-static float s_gyroOffsetX = 0.0f;
-static float s_gyroOffsetY = 0.0f;
-static float s_gyroOffsetZ = 0.0f;
+static float s_accelOffsetX = IMU_ACC_OFFSET_X;
+static float s_accelOffsetY = IMU_ACC_OFFSET_Y;
+static float s_accelOffsetZ = IMU_ACC_OFFSET_Z;
+static float s_gyroOffsetX = IMU_GYRO_OFFSET_X;
+static float s_gyroOffsetY = IMU_GYRO_OFFSET_Y;
+static float s_gyroOffsetZ = IMU_GYRO_OFFSET_Z;
 static float s_neutralRoll = 0.0f;
 static float s_neutralPitch = 0.0f;
 static bool s_printLive = false;
@@ -66,12 +66,21 @@ static bool probeAddress(uint8_t addr) {
 
 static void loadCalibration() {
   s_prefs.begin("glove", false);
-  s_accelOffsetX = s_prefs.getFloat("aox", 0.0f);
-  s_accelOffsetY = s_prefs.getFloat("aoy", 0.0f);
-  s_accelOffsetZ = s_prefs.getFloat("aoz", 0.0f);
-  s_gyroOffsetX = s_prefs.getFloat("gox", 0.0f);
-  s_gyroOffsetY = s_prefs.getFloat("goy", 0.0f);
-  s_gyroOffsetZ = s_prefs.getFloat("goz", 0.0f);
+#if GLOVE_USE_CONFIG_CALIBRATION
+  s_accelOffsetX = IMU_ACC_OFFSET_X;
+  s_accelOffsetY = IMU_ACC_OFFSET_Y;
+  s_accelOffsetZ = IMU_ACC_OFFSET_Z;
+  s_gyroOffsetX = IMU_GYRO_OFFSET_X;
+  s_gyroOffsetY = IMU_GYRO_OFFSET_Y;
+  s_gyroOffsetZ = IMU_GYRO_OFFSET_Z;
+#else
+  s_accelOffsetX = s_prefs.getFloat("aox", IMU_ACC_OFFSET_X);
+  s_accelOffsetY = s_prefs.getFloat("aoy", IMU_ACC_OFFSET_Y);
+  s_accelOffsetZ = s_prefs.getFloat("aoz", IMU_ACC_OFFSET_Z);
+  s_gyroOffsetX = s_prefs.getFloat("gox", IMU_GYRO_OFFSET_X);
+  s_gyroOffsetY = s_prefs.getFloat("goy", IMU_GYRO_OFFSET_Y);
+  s_gyroOffsetZ = s_prefs.getFloat("goz", IMU_GYRO_OFFSET_Z);
+#endif
   s_neutralRoll = s_prefs.getFloat("nroll", 0.0f);
   s_neutralPitch = s_prefs.getFloat("npitch", 0.0f);
 }
@@ -204,6 +213,21 @@ bool imuReadAngles(ImuAngles &angles) {
   angles = rawToAngles(sample, true);
   return true;
 }
+
+bool imuReadMotion(ImuMotion &motion) {
+  ImuRawSample sample;
+  if (!imuReadRaw(sample)) {
+    return false;
+  }
+  ImuAngles angles = rawToAngles(sample, true);
+  motion.roll = angles.roll;
+  motion.pitch = angles.pitch;
+  motion.gyroX = (static_cast<float>(sample.gx) / 65.5f) - s_gyroOffsetX;
+  motion.gyroY = (static_cast<float>(sample.gy) / 65.5f) - s_gyroOffsetY;
+  motion.gyroZ = (static_cast<float>(sample.gz) / 65.5f) - s_gyroOffsetZ;
+  return true;
+}
+
 
 static void startCalibration(CalibrationMode mode) {
   if (s_calMode != CAL_NONE) {

@@ -29,6 +29,7 @@ GloveController/
     glove_comm.h
     glove_imu.h
     gesture.h
+    test_control.h
     leds.h
   src/
     main.cpp
@@ -36,6 +37,7 @@ GloveController/
     imu/glove_imu.cpp
     input/buttons.cpp
     gesture/gesture.cpp
+    gesture/test_control.cpp
     ui/leds.cpp
 ```
 
@@ -80,6 +82,10 @@ Ini file yang paling perlu diisi user sebelum upload ke board. Isinya:
   - `GLOVE_PITCH_SIGN`
   - `GLOVE_ROLL_SIGN`
   - `GLOVE_SWAP_AXES`
+- Konfigurasi kalibrasi IMU:
+  - `GLOVE_USE_CONFIG_CALIBRATION`
+  - `IMU_ACC_OFFSET_X`, `IMU_ACC_OFFSET_Y`, `IMU_ACC_OFFSET_Z`
+  - `IMU_GYRO_OFFSET_X`, `IMU_GYRO_OFFSET_Y`, `IMU_GYRO_OFFSET_Z`
 
 Jika `DRONE_MAC_ADDR` masih semua nol, firmware tetap boot tetapi tidak mengirim paket. Ini disengaja agar tidak ada pengiriman ke alamat tidak jelas.
 
@@ -409,10 +415,10 @@ Saat aktif:
 
 Keputusan arah:
 
-- Pitch positif melewati threshold: `MAJU`.
-- Pitch negatif melewati threshold: `MUNDUR`.
-- Roll positif melewati threshold: `KANAN`.
-- Roll negatif melewati threshold: `KIRI`.
+- Pitch positif melewati threshold: `KANAN`.
+- Pitch negatif melewati threshold: `KIRI`.
+- Roll positif melewati threshold: `MAJU`.
+- Roll negatif melewati threshold: `MUNDUR`.
 
 Reject gesture:
 
@@ -422,7 +428,19 @@ Reject gesture:
 
 Jika gesture valid, callback mengembalikan command arah ke `main.cpp`. Jika tidak valid, LED merah blink reject 2 kali dan tidak ada command yang dikirim.
 
+### `include/test_control.h` & `src/gesture/test_control.cpp`
+
+Modul pengujian konsep kontrol gesture dengan mekanisme toggle tombol READY:
+
+- **Mekanisme Toggle Tombol READY**:
+  - **Pencet ke-1**: Mulai membaca data gesture dan kecepatan gyro secara kontinu (menampilkan indikator live di serial).
+  - **Pencet ke-2**: Menghentikan pembacaan, menghitung rentang (min, max, rata-rata) sudut pitch/roll dan gyro, lalu langsung mentranslasikannya menjadi arah: `MAJU`, `MUNDUR`, `KIRI`, `KANAN`, atau `NETRAL`.
+  - Tombol spasi `' '` pada Serial Monitor juga dapat digunakan sebagai alternatif tombol READY.
+  - Hasil translasi dicetak rapi dan LED hijau berkedip saat arah berhasil dikenali.
+
+
 ## Modul LED
+
 
 ### `include/leds.h`
 

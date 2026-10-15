@@ -44,11 +44,24 @@ static void printMac(const uint8_t *mac) {
   }
 }
 
+static bool isBroadcastMac(const uint8_t *mac) {
+  for (uint8_t i = 0; i < 6; i++) {
+    if (mac[i] != 0xFF) {
+      return false;
+    }
+  }
+  return true;
+}
+
 static void onReceive(const uint8_t *mac, const uint8_t *data, int len) {
   if (len != static_cast<int>(sizeof(DroneStatusPacket))) {
     return;
   }
-  if (!commDroneMacConfigured() || !macEquals(mac, DRONE_MAC_ADDR)) {
+  if (!commDroneMacConfigured()) {
+    return;
+  }
+  // Jika DRONE_MAC_ADDR di-set broadcast (FF:FF:FF:FF:FF:FF), terima status dari drone manapun
+  if (!isBroadcastMac(DRONE_MAC_ADDR) && !macEquals(mac, DRONE_MAC_ADDR)) {
     return;
   }
 
@@ -129,23 +142,35 @@ bool commIsBusy() {
   return s_activeRemaining > 0 || s_noneGapRemaining > 0;
 }
 
+void commSendImmediate(uint8_t command, uint16_t throttle) {
+  if (!commDroneMacConfigured() || !s_readyToSend) {
+    return;
+  }
+  DronePacketV2 packet = {};
+  packet.seq = s_txSeq++;
+  packet.command = command;
+  packet.throttle = throttle;
+  esp_now_send(DRONE_MAC_ADDR, reinterpret_cast<const uint8_t *>(&packet), sizeof(packet));
+}
+
 bool commStartCommand(uint8_t command, uint8_t repeatTicks) {
   if (command == CMD_BTN_EMERGENCY) {
     commEmergencyCommand();
     return true;
   }
-  if (commIsBusy()) {
-    return false;
-  }
   s_activeCommand = command;
   s_activeRemaining = repeatTicks;
+  s_noneGapRemaining = 0;
+  // Langsung kirim instan paket pertama seketika (< 1 ms latency)
+  commSendImmediate(command, 0);
   return true;
 }
 
 void commEmergencyCommand() {
   s_activeCommand = CMD_BTN_EMERGENCY;
-  s_activeRemaining = 12;
+  s_activeRemaining = 4;
   s_noneGapRemaining = 0;
+  commSendImmediate(CMD_BTN_EMERGENCY, 0);
 }
 
 void commTick() {

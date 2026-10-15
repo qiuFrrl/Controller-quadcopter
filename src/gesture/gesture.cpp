@@ -45,27 +45,22 @@ static GestureDecision decide(float roll, float pitch, bool &valid) {
   finalPitch *= static_cast<float>(GLOVE_PITCH_SIGN);
   finalRoll *= static_cast<float>(GLOVE_ROLL_SIGN);
 
-  float absPitch = fabs(finalPitch);
-  float absRoll = fabs(finalRoll);
-  bool pitchPass = absPitch >= GESTURE_ANGLE_THRESHOLD;
-  bool rollPass = absRoll >= GESTURE_ANGLE_THRESHOLD;
+  valid = true;
+  if (finalPitch < -20.0f) {
+    return GESTURE_KIRI;
+  }
+  if (finalRoll > 15.0f) {
+    return GESTURE_MAJU;
+  }
+  if (finalPitch >= 30.0f) {
+    return GESTURE_KANAN;
+  }
+  if (finalRoll < -15.0f) {
+    return GESTURE_MUNDUR;
+  }
 
   valid = false;
-  if (!pitchPass && !rollPass) {
-    return GESTURE_NONE;
-  }
-
-  float dominant = absPitch > absRoll ? absPitch : absRoll;
-  float secondary = absPitch > absRoll ? absRoll : absPitch;
-  if (pitchPass && rollPass && secondary > (0.7f * dominant)) {
-    return GESTURE_NONE;
-  }
-
-  valid = true;
-  if (absPitch >= absRoll) {
-    return finalPitch > 0.0f ? GESTURE_MAJU : GESTURE_MUNDUR;
-  }
-  return finalRoll > 0.0f ? GESTURE_KANAN : GESTURE_KIRI;
+  return GESTURE_NONE;
 }
 
 static const char *decisionName(GestureDecision decision) {

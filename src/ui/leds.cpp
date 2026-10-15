@@ -8,6 +8,9 @@
 static uint8_t s_rejectToggles = 0;
 static uint32_t s_nextRejectMs = 0;
 static bool s_rejectOn = false;
+static uint8_t s_successToggles = 0;
+static uint32_t s_nextSuccessMs = 0;
+static bool s_successOn = false;
 
 static bool pinConfigured(int pin) {
   return pin >= 0;
@@ -41,6 +44,12 @@ void ledsBlinkReject(uint8_t count) {
   s_rejectOn = false;
 }
 
+void ledsBlinkSuccess(uint8_t count) {
+  s_successToggles = count * 2;
+  s_nextSuccessMs = 0;
+  s_successOn = false;
+}
+
 void ledsUpdate() {
   uint32_t now = millis();
 
@@ -54,28 +63,47 @@ void ledsUpdate() {
     return;
   }
 
+  if (s_successToggles > 0) {
+    if (s_nextSuccessMs == 0 || now >= s_nextSuccessMs) {
+      s_successOn = !s_successOn;
+      s_successToggles--;
+      s_nextSuccessMs = now + 120UL;
+    }
+    setLeds(s_successOn, false);
+    return;
+  }
+
+
   uint32_t statusAge = commStatusAgeMs();
   bool noStatusYet = statusAge == 0xFFFFFFFFUL;
   bool linkLost = !noStatusYet && !commHasFreshStatus();
   bool imuError = imuHasError();
   uint8_t state = commLastDroneState();
-  if (imuError || linkLost || state == DRONE_EMERGENCY) {
+
+  if (imuError || state == DRONE_EMERGENCY) {
     bool redBlink = ((now / 150UL) % 2UL) == 0UL;
     setLeds(false, redBlink);
     return;
   }
 
+  // Jika belum terhubung atau sinyal terputus: LED Merah
   if (noStatusYet) {
-    setLeds(false, true);
+    setLeds(false, true); // Merah solid: belum ada sinyal ESP-NOW
     return;
   }
 
-  if (state == DRONE_ARMED || state == DRONE_FLYING) {
-    setLeds(true, false);
-  } else if (state == DRONE_LANDING) {
+  if (linkLost) {
+    bool redBlink = ((now / 200UL) % 2UL) == 0UL;
+    setLeds(false, redBlink); // Merah kedip: sinyal terputus
+    return;
+  }
+
+  // ESP-NOW BERHASIL TERHUBUNG: Lampu HIJAU HIDUP!
+  if (state == DRONE_LANDING) {
     bool greenBlink = ((now / 500UL) % 2UL) == 0UL;
     setLeds(greenBlink, false);
   } else {
-    setLeds(false, true);
+    // DISARMED, ARMED, atau FLYING saat link terhubung: Lampu hijau hidup solid
+    setLeds(true, false);
   }
 }
