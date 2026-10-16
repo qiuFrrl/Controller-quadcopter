@@ -82,13 +82,28 @@ void commBegin() {
   esp_wifi_set_storage(WIFI_STORAGE_RAM);
   esp_wifi_set_mode(WIFI_MODE_STA);
   esp_wifi_start();
+
+  // ============================================================
+  // FIX ESP-NOW PUTUS-PUTUS:
+  // 1. Matikan WiFi Power Save (modem sleep) — penyebab utama
+  //    radio mati sesaat dan paket hilang secara berkala
+  // 2. Naikkan daya pancar ke maksimum (19.5 dBm / param 78)
+  // 3. Kunci kanal WiFi agar sinkron dengan drone
+  // ============================================================
+  esp_wifi_set_ps(WIFI_PS_NONE);
   esp_wifi_set_channel(WIFI_CHANNEL, WIFI_SECOND_CHAN_NONE);
+  esp_wifi_set_max_tx_power(78);  // 78 = 19.5 dBm (max untuk ESP32-C3)
+
+  uint8_t primaryChan = 0;
+  wifi_second_chan_t secondChan;
+  esp_wifi_get_channel(&primaryChan, &secondChan);
 
   uint8_t ownMac[6] = {0, 0, 0, 0, 0, 0};
   esp_read_mac(ownMac, ESP_MAC_WIFI_STA);
   Serial.print("[ESP-NOW] MAC Address Glove: ");
   printMac(ownMac);
   Serial.println();
+  Serial.printf("[ESP-NOW] WiFi Channel: %d | Power Save: NONE | TX Power: 19.5dBm\n", primaryChan);
 
   if (!commDroneMacConfigured()) {
     Serial.println("[ESP-NOW] PERINGATAN KERAS: DRONE_MAC_ADDR masih 00:00:00:00:00:00. Paket tidak akan dikirim.");

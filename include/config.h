@@ -17,7 +17,7 @@ static const uint8_t DRONE_MAC_ADDR[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 static const uint8_t WIFI_CHANNEL = 1;
 static const uint32_t CONTROL_TICK_MS = 10;
-static const uint32_t STATUS_TIMEOUT_MS = 1000;
+static const uint32_t STATUS_TIMEOUT_MS = 2000;
 static const uint32_t COMMAND_MIN_NONE_TICKS = 2;
 
 static const uint32_t GESTURE_SAMPLE_MS = 250;
